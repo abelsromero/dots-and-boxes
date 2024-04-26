@@ -35,10 +35,11 @@ local board = Board
 boxes = {}
 dots = {}
 
-dot_pressed = nil
-dot_current = nil
-click_pressed = nil
-click_current = nil
+-- movement coordinates & matching dots
+movement_source = nil
+movement_target = nil
+dot_source = nil
+dot_target = nil
 
 local fontSize = 12
 
@@ -121,22 +122,22 @@ end
 
 function love.mousepressed(x, y, button, istouch)
   if button == 1 then
-    dot_pressed = find_dot(x, y)
-    click_pressed = { x, y }
+    dot_source = find_dot(x, y)
+    movement_source = { x, y }
   end
 end
 
 function love.mousemoved(x, y, dx, dy, istouch)
-  if click_pressed ~= nil then
-    click_current = { x, y }
-    dot_current = find_dot(x, y)
+  if movement_source ~= nil then
+    movement_target = { x, y }
+    dot_target = find_dot(x, y)
   end
 end
 
 function love.mousereleased(x, y, button, istouch)
   --print("mousereleased", dump(click_pressed))
-  dot_pressed, dot_current = nil
-  click_pressed, click_current = nil
+  dot_source, dot_target = nil
+  movement_source, movement_target = nil
 end
 
 function drawLimits()
@@ -146,31 +147,35 @@ end
 
 function is_pressed(dot)
   --print("is_pressed")
-  if dot_pressed == nil then
+  if dot_source == nil then
     return false
   end
-  return dot_pressed.x == dot.x and dot_pressed.y == dot.y
+  return dot_source.x == dot.x and dot_source.y == dot.y
 end
 
 function draw_movement()
-  if dot_pressed ~= nil then
-    if click_current ~= nil then
+  if dot_source ~= nil then
+    if movement_target ~= nil then
       love.graphics.setColor(unpack(COLOR_RED))
       love.graphics.setLineWidth(8)
-      love.graphics.line(dot_pressed.x, dot_pressed.y, click_current[1], click_current[2])
+      -- center line on dot if we are over it
+      if dot_target then
+        love.graphics.line(dot_source.x, dot_source.y, dot_target.x, dot_target.y)
+      else
+        love.graphics.line(dot_source.x, dot_source.y, movement_target[1], movement_target[2])
+      end
       love.graphics.setLineWidth(1)
     end
   end
-  if dot_current ~= nil then
+  if dot_target ~= nil then
     love.graphics.setColor(unpack(COLOR_RED))
-    love.graphics.circle("fill", dot_current.x, dot_current.y, DOT_RADIUS_SELECTED)
+    love.graphics.circle("fill", dot_target.x, dot_target.y, DOT_RADIUS_SELECTED)
   end
 end
 
 -- TODO refactor to extract pressed_dot logic
--- go back to idea of property to draw both dots in movement
 function draw_dot(dot, i, j)
-  love.graphics.push("all")
+  love.graphics.push()
   if is_pressed(dot) then
     love.graphics.setColor(unpack(COLOR_RED))
     love.graphics.circle("fill", dot.x, dot.y, DOT_RADIUS_SELECTED)
