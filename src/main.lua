@@ -106,12 +106,17 @@ function love.keypressed(key, scancode, isrepeat)
   end
 end
 
+function distance (x, y, i, j)
+  --print(os.date("%m/%d/%Y %I:%M %p"), x, y, i, j)
+  local dx, dy = x - i, y - j
+  return math.sqrt((dx * dx) + (dy * dy))
+end
+
 -- TODO optimize: this is used a lot
 function find_dot (x, y)
   for i, _ in ipairs(dots) do
     for _, v in ipairs(dots[i]) do
-      local dx, dy = x - v.x, y - v.y
-      local distance = math.sqrt(dx * dx + dy * dy)
+      local distance = distance(x, y, v.x, v.y)
       if distance < DOT_RADIUS then
         return v
       end
@@ -131,6 +136,15 @@ function love.mousemoved(x, y, dx, dy, istouch)
   if movement_source ~= nil then
     movement_target = { x, y }
     dot_target = find_dot(x, y)
+
+    if dot_target ~= nil then
+      -- Q: distance(unpack(dot_source), (dot_target)) caused to pass nil
+      local distance = distance(dot_source.x, dot_source.y, dot_target.x, dot_target.y)
+      print("dist", distance)
+      if distance > BOX_SIZE then
+        dot_target = nil
+      end
+    end
   end
 end
 
@@ -238,5 +252,6 @@ function love.draw()
   if UI.debug then
     local rowHeight = fontSize + 2
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, rowHeight)
+    love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, fontSize + (rowHeight * 1))
   end
 end
