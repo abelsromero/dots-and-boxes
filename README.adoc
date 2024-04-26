@@ -1,0 +1,34 @@
+= Joc de caixes (Dots & Boxes)
+
+Implementation of https://en.wikipedia.org/wiki/Dots_and_boxes[dots and boxes] game with https://love2d.org/[LÖVE] game engine.
+
+This is a simple project:
+* for learning,
+* experimentation,
+* and to deal with family members cheats.
+
+== Development
+
+* IDE
+** https://www.jetbrains.com/idea/[IntelliJ IDEA]
+** https://plugins.jetbrains.com/plugin/9768-emmylua[EmmyLua Plugin]
+
+** https://github.com/usysrc/LICK[LICK] for hot reload
+// Does not work: https://github.com/rxi/lurker + https://github.com/rxi/lume
+
+== How to run
+
+Run from root path:
+
+ $ love src
+
+== Assets
+
+== TODO
+
+* Try https://github.com/EmmyLua/Emmy-love-api for Love2D autocompletion
+* Use luarocks for https://github.com/kikito/inspect.lua for package management
+
+== License
+
+GNU GENERAL PUBLIC LICENSE v3
