@@ -41,6 +41,8 @@ movement_target = nil
 dot_source = nil
 dot_target = nil
 
+lines_drawn = {}
+
 local fontSize = 12
 
 function coordinate (x, y)
@@ -95,7 +97,6 @@ function love.update(dt)
 end
 
 function love.keypressed(key, scancode, isrepeat)
-  print("pressed " .. key, isrepeat)
   if key == "f1" then
     UI.debug = not UI.debug
   elseif key == "f2" then
@@ -107,7 +108,6 @@ function love.keypressed(key, scancode, isrepeat)
 end
 
 function distance (x, y, i, j)
-  --print(os.date("%m/%d/%Y %I:%M %p"), x, y, i, j)
   local dx, dy = x - i, y - j
   return math.sqrt((dx * dx) + (dy * dy))
 end
@@ -137,10 +137,9 @@ function love.mousemoved(x, y, dx, dy, istouch)
     movement_target = { x, y }
     dot_target = find_dot(x, y)
 
-    if dot_target ~= nil then
+    if dot_source and dot_target then
       -- Q: distance(unpack(dot_source), (dot_target)) caused to pass nil
       local distance = distance(dot_source.x, dot_source.y, dot_target.x, dot_target.y)
-      print("dist", distance)
       if distance > BOX_SIZE then
         dot_target = nil
       end
@@ -149,7 +148,12 @@ function love.mousemoved(x, y, dx, dy, istouch)
 end
 
 function love.mousereleased(x, y, button, istouch)
-  --print("mousereleased", dump(click_pressed))
+  -- user is selecting 2 valid dots
+  if dot_source and dot_target then
+    local cosa = { dot_source, dot_target }
+    -- TODO prevent inserting the same twice
+    table.insert(lines_drawn, cosa)
+  end
   dot_source, dot_target = nil
   movement_source, movement_target = nil
 end
@@ -165,6 +169,22 @@ function is_pressed(dot)
     return false
   end
   return dot_source.x == dot.x and dot_source.y == dot.y
+end
+
+function draw_player_lines ()
+  if next(lines_drawn) then
+    local originalColor = { love.graphics.getColor() }
+    local originalLineWidth = love.graphics.getLineWidth()
+    love.graphics.setLineWidth(DOT_RADIUS * 2 - 2)
+    for i, v in ipairs(lines_drawn) do
+      love.graphics.setColor(unpack(COLOR_BLUE))
+      local source = v[1]
+      local target = v[2]
+      love.graphics.line(source.x, source.y, target.x, target.y)
+    end
+    love.graphics.setColor(originalColor)
+    love.graphics.setLineWidth(originalLineWidth)
+  end
 end
 
 function draw_movement()
@@ -215,7 +235,6 @@ end
 function draw_dots ()
   for i, _ in ipairs(dots) do
     for j, v in ipairs(dots[i]) do
-      -- print(i, j, v.x, v.y)
       draw_dot(v, i, j)
     end
   end
@@ -225,7 +244,6 @@ function draw_layout()
   love.graphics.setColor(COLOR_GREEN)
   for i, _ in ipairs(boxes) do
     for j, v in ipairs(boxes[i]) do
-      --print("box: " .. v.x .. v.y)
       love.graphics.rectangle("line", v.x, v.y, BOX_SIZE, BOX_SIZE)
     end
   end
@@ -241,6 +259,7 @@ function love.draw()
     -- TODO fix issue where first layout line has a softer green until a click on dot + drag happens
     draw_layout()
   end
+  draw_player_lines()
   draw_dots()
   -- draw movement at the end to display line above all other elements
   draw_movement()
