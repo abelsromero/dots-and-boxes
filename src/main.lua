@@ -41,6 +41,12 @@ movement_target = nil
 dot_source = nil
 dot_target = nil
 
+players_count = 2
+current_player = 1
+players_colors = {
+  COLOR_BLUE,
+  COLOR_WHITE
+}
 lines_drawn = {}
 
 local fontSize = 12
@@ -60,7 +66,17 @@ function dot (x, y)
   }
 end
 
+function init_data()
+  --lines_drawn[1] = {}
+  --lines_drawn[2] = {}
+  for i = 1, players_count do
+    lines_drawn[i] = {}
+  end
+end
+
 function love.load()
+  init_data()
+
   local width, height = love.graphics.getDimensions()
 
   board.x = (width * UI_LEFT_MARGIN_PERCENT) / 100
@@ -150,9 +166,15 @@ end
 function love.mousereleased(x, y, button, istouch)
   -- user is selecting 2 valid dots
   if dot_source and dot_target then
-    local cosa = { dot_source, dot_target }
-    -- TODO prevent inserting the same twice
-    table.insert(lines_drawn, cosa)
+    local movement = { dot_source, dot_target }
+    -- TODO prevent inserting the same twice, or same movement as another player
+    table.insert(lines_drawn[current_player], movement)
+    local next_player = current_player + 1
+    if next_player > players_count then
+      current_player = 1
+    else
+      current_player = next_player
+    end
   end
   dot_source, dot_target = nil
   movement_source, movement_target = nil
@@ -171,13 +193,15 @@ function is_pressed(dot)
   return dot_source.x == dot.x and dot_source.y == dot.y
 end
 
-function draw_player_lines ()
-  if next(lines_drawn) then
+function draw_player_lines (lines, color)
+  --love.graphics.push("all")
+  if next(lines) then
     local originalColor = { love.graphics.getColor() }
     local originalLineWidth = love.graphics.getLineWidth()
     love.graphics.setLineWidth(DOT_RADIUS * 2 - 2)
-    for i, v in ipairs(lines_drawn) do
-      love.graphics.setColor(unpack(COLOR_BLUE))
+    for i, v in ipairs(lines) do
+      --print("color", dump(color))
+      love.graphics.setColor(color[1], color[2], color[3])
       local source = v[1]
       local target = v[2]
       love.graphics.line(source.x, source.y, target.x, target.y)
@@ -185,6 +209,7 @@ function draw_player_lines ()
     love.graphics.setColor(originalColor)
     love.graphics.setLineWidth(originalLineWidth)
   end
+  --love.graphics.pop()
 end
 
 function draw_movement()
@@ -259,7 +284,10 @@ function love.draw()
     -- TODO fix issue where first layout line has a softer green until a click on dot + drag happens
     draw_layout()
   end
-  draw_player_lines()
+  print("-----")
+  for i = 1, players_count do
+    draw_player_lines(lines_drawn[i], players_colors[i])
+  end
   draw_dots()
   -- draw movement at the end to display line above all other elements
   draw_movement()
@@ -272,5 +300,8 @@ function love.draw()
     local rowHeight = fontSize + 2
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, rowHeight)
     love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, fontSize + (rowHeight * 1))
+    love.graphics.print("Current player: " .. current_player, 10, fontSize + (rowHeight * 2))
+    love.graphics.print("lines Player 1: " .. #lines_drawn[1], 10, fontSize + (rowHeight * 3))
+    love.graphics.print("lines Player 2: " .. #lines_drawn[2], 10, fontSize + (rowHeight * 4))
   end
 end
