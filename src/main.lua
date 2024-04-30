@@ -26,6 +26,9 @@ DOT_RADIUS_SELECTED = 10
 UI_LEFT_MARGIN_PERCENT = 15
 UI_TOP_MARGIN_PERCENT = 15
 UI_BACKGROUND = { love.math.colorFromBytes(96, 96, 96) }
+UI_FONT_SIZE = 16
+UI_FONT = nil
+UI_PANELS_FONT = nil
 
 assets = {
 
@@ -48,8 +51,6 @@ players_colors = {
   COLOR_WHITE
 }
 lines_drawn = {}
-
-local fontSize = 12
 
 function coordinate (x, y)
   return {
@@ -104,7 +105,10 @@ function love.load()
   --  dots[last_column][row] = coordinate(last_column_x, y)
   --end
 
-  font = love.graphics.setNewFont(fontSize)
+  UI_DOTS = love.graphics.setNewFont(12)
+  UI_PANELS_FONT = love.graphics.setNewFont(UI_FONT_SIZE)
+  UI_FONT = love.graphics.newFont("assets/BalonkuRegular-la1w.otf", 40)
+
   --love.keyboard.setKeyRepeat(true)
 end
 
@@ -202,8 +206,7 @@ function draw_player_lines (lines, color)
     for i, v in ipairs(lines) do
       --print("color", dump(color))
       love.graphics.setColor(color[1], color[2], color[3])
-      local source = v[1]
-      local target = v[2]
+      local source, target = v[1], v[2]
       love.graphics.line(source.x, source.y, target.x, target.y)
     end
     love.graphics.setColor(originalColor)
@@ -247,6 +250,7 @@ function draw_dot(dot, i, j)
 
   if UI.debug then
     love.graphics.push()
+    love.graphics.setFont(UI_DOTS)
     love.graphics.translate(dot.x, dot.y)
     love.graphics.rotate(-0.3)
     if i ~= nil then
@@ -284,7 +288,7 @@ function love.draw()
     -- TODO fix issue where first layout line has a softer green until a click on dot + drag happens
     draw_layout()
   end
-  print("-----")
+
   for i = 1, players_count do
     draw_player_lines(lines_drawn[i], players_colors[i])
   end
@@ -297,11 +301,19 @@ function love.draw()
   love.graphics.setColor(unpack(originalColor))
 
   if UI.debug then
-    local rowHeight = fontSize + 2
+    love.graphics.setFont(UI_PANELS_FONT)
+    local rowHeight = UI_FONT_SIZE + 2
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, rowHeight)
-    love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, fontSize + (rowHeight * 1))
-    love.graphics.print("Current player: " .. current_player, 10, fontSize + (rowHeight * 2))
-    love.graphics.print("lines Player 1: " .. #lines_drawn[1], 10, fontSize + (rowHeight * 3))
-    love.graphics.print("lines Player 2: " .. #lines_drawn[2], 10, fontSize + (rowHeight * 4))
+    love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, UI_FONT_SIZE + (rowHeight * 1))
+    love.graphics.print("Lines Player 1: " .. #lines_drawn[1], 10, UI_FONT_SIZE + (rowHeight * 2))
+    love.graphics.print("Lines Player 2: " .. #lines_drawn[2], 10, UI_FONT_SIZE + (rowHeight * 3))
   end
+
+  local width, height = love.graphics.getDimensions()
+
+  love.graphics.push("all")
+  love.graphics.setFont(UI_FONT)
+  love.graphics.setColor(COLOR_GREEN)
+  love.graphics.print("Go player " .. current_player .. " !", width - 500, 20)
+  love.graphics.pop()
 end

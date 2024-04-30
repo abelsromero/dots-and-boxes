@@ -24,6 +24,9 @@ Run from root path:
 
 == Assets
 
+* Font(s):
+** https://www.fontspace.com/balonku-font-f31178 (Shareware, Non-Commercial)
+
 == TODO
 
 * Try https://github.com/EmmyLua/Emmy-love-api for Love2D autocompletion
