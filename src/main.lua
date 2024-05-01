@@ -49,6 +49,10 @@ current_player = 1
 
 player_lines = {}
 player_points = {}
+-- consecutive squares done
+current_squares = nil
+-- signals to continue with the current player
+square_closed_in_turn = nil
 
 players_colors = {
   COLOR_BLUE,
@@ -70,8 +74,14 @@ function players_init()
   end
 end
 
+function score_init()
+  current_squares = 0
+  square_closed_in_turn = false
+end
+
 function love.load()
   players_init()
+  score_init()
 
   local width, height = love.graphics.getDimensions()
 
@@ -188,30 +198,28 @@ function line_is_drawn(x, y, i, j)
   return false
 end
 
+function score_increase()
+  player_points[current_player] = player_points[current_player] + 1
+  current_squares = current_squares + 1
+  square_closed_in_turn = true
+end
+
 -- params are coordinates
-function mark_scores (source, target)
-  print("-----------------------------")
+function score_check (source, target)
   local side = BOX_SIZE
   local x, y = source.x, source.y
   local i, j = target.x, target.y
   -- VERTICAL
   if is_horizontal(source, target) then
     -- TODO is it worth filtering invalid dots?
-    local direction
-    if x < i then
-      direction = ">>>>"
-    else
-      direction = "<<<<"
-    end
-    print("*** Checking H: ", dump(source), dump(target))
-
+    --print("*** Checking H: ", dump(source), dump(target))
     local top = line_is_drawn(x, y - side, i, j - side)
     local top_left = line_is_drawn(x, y, i - side, j - side)
     local top_right = line_is_drawn(x + side, y - side, i, j)
 
-    print("Top:    " .. tostring(top) .. " | top-L: " .. tostring(top_left) .. " | top-R: " .. tostring(top_right))
+    --print("Top:    " .. tostring(top) .. " | top-L: " .. tostring(top_left) .. " | top-R: " .. tostring(top_right))
     if top and top_left and top_right then
-      player_points[current_player] = player_points[current_player] + 1
+      score_increase()
       return
     end
 
@@ -219,22 +227,21 @@ function mark_scores (source, target)
     local bottom_left = line_is_drawn(x, y, i - side, j + side)
     local bottom_right = line_is_drawn(x + side, y + side, i, j)
 
-    print("Bottom: " .. tostring(bottom) .. " | bot-L: " .. tostring(bottom_left) .. " | bot-R: " .. tostring(bottom_right))
+    --print("Bottom: " .. tostring(bottom) .. " | bot-L: " .. tostring(bottom_left) .. " | bot-R: " .. tostring(bottom_right))
     if bottom and bottom_left and bottom_right then
-      player_points[current_player] = player_points[current_player] + 1
+      score_increase()
       return
     end
     -- VERTICAL
   else
-    print("*** Checking V: ", dump(source), dump(target))
-
+    --print("*** Checking V: ", dump(source), dump(target))
     local left = line_is_drawn(x - side, y, i - side, j)
     local left_top = line_is_drawn(x, y, i - side, j - side)
     local left_bottom = line_is_drawn(x - side, y + side, i, j)
 
-    print("Left: " .. tostring(left) .. " | left-T: " .. tostring(left_top) .. " | left-B: " .. tostring(left_bottom))
+    --print("Left: " .. tostring(left) .. " | left-T: " .. tostring(left_top) .. " | left-B: " .. tostring(left_bottom))
     if left and left_top and left_bottom then
-      player_points[current_player] = player_points[current_player] + 1
+      score_increase()
       return
     end
 
@@ -242,12 +249,13 @@ function mark_scores (source, target)
     local right_top = line_is_drawn(x, y, i + side, j - side)
     local right_bottom = line_is_drawn(x + side, y + side, i, j)
 
-    print("Right: " .. tostring(right) .. " | right-T: " .. tostring(right_top) .. " | right-B: " .. tostring(right_bottom))
+    --print("Right: " .. tostring(right) .. " | right-T: " .. tostring(right_top) .. " | right-B: " .. tostring(right_bottom))
     if right and right_top and right_bottom then
-      player_points[current_player] = player_points[current_player] + 1
-      print("*** Checking V: ", dump(source), dump(target))
-      return
+      score_increase()
+      --print("*** Checking V: ", dump(source), dump(target))
     end
+
+    square_closed_in_turn = false
   end
 
 end
@@ -264,13 +272,15 @@ function movement_clear ()
   movement_source, movement_target = nil
 end
 
--- TODO implement extra turn when closing a square
 function players_next ()
-  local next_player = current_player + 1
-  if next_player > players_count then
-    current_player = 1
-  else
-    current_player = next_player
+  if not square_closed_in_turn then
+    local next_player = current_player + 1
+    if next_player > players_count then
+      current_player = 1
+    else
+      current_player = next_player
+      current_squares = 0
+    end
   end
 end
 
@@ -279,7 +289,7 @@ function love.mousereleased (x, y, button, istouch)
   if dot_source and dot_target then
     local source, target = movement_sort(dot_source, dot_target)
     player_save_movement(source, target)
-    mark_scores(source, target)
+    score_check(source, target)
     players_next()
   end
 
@@ -417,6 +427,11 @@ function love.draw()
   love.graphics.push("all")
   love.graphics.setFont(UI_FONT)
   love.graphics.setColor(COLOR_GREEN)
-  love.graphics.print("Go player " .. current_player .. " !", width - 500, 20)
+  local topMargin = 20
+  if square_closed_in_turn then
+    love.graphics.print("Player " .. current_player .. " continues!", width - 550, topMargin)
+  else
+    love.graphics.print("Go player " .. current_player .. " !", width - 500, topMargin)
+  end
   love.graphics.pop()
 end
