@@ -1,4 +1,6 @@
 require("libs/utils")
+require("coordinates")
+
 -- hot reload
 local lick = require("libs/lick")
 lick.reset = true
@@ -30,9 +32,7 @@ UI_FONT_SIZE = 16
 UI_FONT = nil
 UI_PANELS_FONT = nil
 
-assets = {
-
-}
+assets = {}
 
 local board = Board
 boxes = {}
@@ -46,18 +46,14 @@ dot_target = nil
 
 players_count = 2
 current_player = 1
+
+player_lines = {}
+player_points = {}
+
 players_colors = {
   COLOR_BLUE,
   COLOR_WHITE
 }
-lines_drawn = {}
-
-function coordinate (x, y)
-  return {
-    x = x,
-    y = y
-  }
-end
 
 function dot (x, y)
   return {
@@ -67,16 +63,15 @@ function dot (x, y)
   }
 end
 
-function init_data()
-  --lines_drawn[1] = {}
-  --lines_drawn[2] = {}
+function players_init()
   for i = 1, players_count do
-    lines_drawn[i] = {}
+    player_lines[i] = {}
+    player_points[i] = 0
   end
 end
 
 function love.load()
-  init_data()
+  players_init()
 
   local width, height = love.graphics.getDimensions()
 
@@ -117,6 +112,10 @@ function love.update(dt)
 end
 
 function love.keypressed(key, scancode, isrepeat)
+  if key == "r" then
+    players_init()
+  end
+
   if key == "f1" then
     UI.debug = not UI.debug
   elseif key == "f2" then
@@ -167,21 +166,124 @@ function love.mousemoved(x, y, dx, dy, istouch)
   end
 end
 
-function love.mousereleased(x, y, button, istouch)
-  -- user is selecting 2 valid dots
-  if dot_source and dot_target then
-    local movement = { dot_source, dot_target }
-    -- TODO prevent inserting the same twice, or same movement as another player
-    table.insert(lines_drawn[current_player], movement)
-    local next_player = current_player + 1
-    if next_player > players_count then
-      current_player = 1
-    else
-      current_player = next_player
+function is_horizontal (dot_source, dot_target)
+  return dot_source.y == dot_target.y
+end
+
+function line_is_drawn(x, y, i, j)
+  for player = 1, players_count do
+    for _, v in ipairs(player_lines[player]) do
+      local source, target = v[1], v[2]
+      --print("player_line: ", i, #player_lines[player], dump(v), ">>", "(" .. x .. "," .. y .. ")" .. "," .. "(" .. i .. "," .. j .. ")")
+      if source.x == x and source.y == y and target.x == i and target.y == j then
+        --print("match 1")
+        return true
+      end
+      if source.x == i and source.y == j and target.x == x and target.y == y then
+        --print("match 2")
+        return true
+      end
     end
   end
+  return false
+end
+
+-- params are coordinates
+function mark_scores (source, target)
+  print("-----------------------------")
+  local side = BOX_SIZE
+  local x, y = source.x, source.y
+  local i, j = target.x, target.y
+  -- VERTICAL
+  if is_horizontal(source, target) then
+    -- TODO is it worth filtering invalid dots?
+    local direction
+    if x < i then
+      direction = ">>>>"
+    else
+      direction = "<<<<"
+    end
+    print("*** Checking H: ", dump(source), dump(target))
+
+    local top = line_is_drawn(x, y - side, i, j - side)
+    local top_left = line_is_drawn(x, y, i - side, j - side)
+    local top_right = line_is_drawn(x + side, y - side, i, j)
+
+    print("Top:    " .. tostring(top) .. " | top-L: " .. tostring(top_left) .. " | top-R: " .. tostring(top_right))
+    if top and top_left and top_right then
+      player_points[current_player] = player_points[current_player] + 1
+      return
+    end
+
+    local bottom = line_is_drawn(x, y + side, i, j + side)
+    local bottom_left = line_is_drawn(x, y, i - side, j + side)
+    local bottom_right = line_is_drawn(x + side, y + side, i, j)
+
+    print("Bottom: " .. tostring(bottom) .. " | bot-L: " .. tostring(bottom_left) .. " | bot-R: " .. tostring(bottom_right))
+    if bottom and bottom_left and bottom_right then
+      player_points[current_player] = player_points[current_player] + 1
+      return
+    end
+    -- VERTICAL
+  else
+    print("*** Checking V: ", dump(source), dump(target))
+
+    local left = line_is_drawn(x - side, y, i - side, j)
+    local left_top = line_is_drawn(x, y, i - side, j - side)
+    local left_bottom = line_is_drawn(x - side, y + side, i, j)
+
+    print("Left: " .. tostring(left) .. " | left-T: " .. tostring(left_top) .. " | left-B: " .. tostring(left_bottom))
+    if left and left_top and left_bottom then
+      player_points[current_player] = player_points[current_player] + 1
+      return
+    end
+
+    local right = line_is_drawn(x + side, y, i + side, j)
+    local right_top = line_is_drawn(x, y, i + side, j - side)
+    local right_bottom = line_is_drawn(x + side, y + side, i, j)
+
+    print("Right: " .. tostring(right) .. " | right-T: " .. tostring(right_top) .. " | right-B: " .. tostring(right_bottom))
+    if right and right_top and right_bottom then
+      player_points[current_player] = player_points[current_player] + 1
+      print("*** Checking V: ", dump(source), dump(target))
+      return
+    end
+  end
+
+end
+
+-- TODO prevent inserting the same twice, or same movement as another player
+function player_save_movement (source, target)
+  -- sort is done before, keeping this to be 100% sure until test is in place
+  local movement = { movement_sort(source, target) }
+  table.insert(player_lines[current_player], movement)
+end
+
+function movement_clear ()
   dot_source, dot_target = nil
   movement_source, movement_target = nil
+end
+
+-- TODO implement extra turn when closing a square
+function players_next ()
+  local next_player = current_player + 1
+  if next_player > players_count then
+    current_player = 1
+  else
+    current_player = next_player
+  end
+end
+
+function love.mousereleased (x, y, button, istouch)
+  -- user is selecting 2 valid dots
+  if dot_source and dot_target then
+    local source, target = movement_sort(dot_source, dot_target)
+    player_save_movement(source, target)
+    mark_scores(source, target)
+    players_next()
+  end
+
+  movement_clear()
 end
 
 function drawLimits()
@@ -242,6 +344,7 @@ function draw_dot(dot, i, j)
     love.graphics.setColor(unpack(COLOR_RED))
     love.graphics.circle("fill", dot.x, dot.y, DOT_RADIUS_SELECTED)
   else
+    -- FIXME grey does not work?
     love.graphics.setColor(unpack(COLOR_WHITE))
     love.graphics.circle("fill", dot.x, dot.y, DOT_RADIUS)
   end
@@ -272,7 +375,7 @@ end
 function draw_layout()
   love.graphics.setColor(COLOR_GREEN)
   for i, _ in ipairs(boxes) do
-    for j, v in ipairs(boxes[i]) do
+    for _, v in ipairs(boxes[i]) do
       love.graphics.rectangle("line", v.x, v.y, BOX_SIZE, BOX_SIZE)
     end
   end
@@ -290,7 +393,7 @@ function love.draw()
   end
 
   for i = 1, players_count do
-    draw_player_lines(lines_drawn[i], players_colors[i])
+    draw_player_lines(player_lines[i], players_colors[i])
   end
   draw_dots()
   -- draw movement at the end to display line above all other elements
@@ -304,9 +407,9 @@ function love.draw()
     love.graphics.setFont(UI_PANELS_FONT)
     local rowHeight = UI_FONT_SIZE + 2
     love.graphics.print("FPS: " .. love.timer.getFPS(), 10, rowHeight)
-    love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, UI_FONT_SIZE + (rowHeight * 1))
-    love.graphics.print("Lines Player 1: " .. #lines_drawn[1], 10, UI_FONT_SIZE + (rowHeight * 2))
-    love.graphics.print("Lines Player 2: " .. #lines_drawn[2], 10, UI_FONT_SIZE + (rowHeight * 3))
+    love.graphics.print("Player 1 (lin/squ): " .. #player_lines[1] .. "/" .. player_points[1], 10, UI_FONT_SIZE + (rowHeight * 1))
+    love.graphics.print("Player 2 (lin/squ): " .. #player_lines[2] .. "/" .. player_points[2], 10, UI_FONT_SIZE + (rowHeight * 2))
+    love.graphics.print("Dots: " .. dump(dot_source) .. "->" .. dump(dot_target), 10, UI_FONT_SIZE + (rowHeight * 3))
   end
 
   local width, height = love.graphics.getDimensions()
